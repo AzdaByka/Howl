@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://howl.local/contracts/realtime-client-message.json",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["type"],
+      "properties": {"type": {"const": "ping"}},
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["type", "community_id"],
+      "properties": {
+        "type": {"const": "subscribe"},
+        "community_id": {"type": "string", "format": "uuid"},
+        "channel_id": {"type": ["string", "null"], "format": "uuid"}
+      },
+      "additionalProperties": false
+    }
+  ]
+}

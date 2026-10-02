@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# JavaScript / TypeScript
+node_modules/
+dist/
+build/
+.vite/
+.electron/
+coverage/
+
+# Environment and local data
+.env
+.env.*
+!.env.example
+*.local
+data/
+postgres-data/
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local architecture notes
+/ARCHITECTURE_PROPOSAL.md
