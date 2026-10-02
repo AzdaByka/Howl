@@ -1,0 +1,445 @@
+openapi: 3.1.0
+info:
+  title: Howl API
+  version: 0.1.0
+  description: HTTP API contract for the Howl backend.
+servers:
+  - url: http://localhost:8000
+tags:
+  - name: health
+  - name: auth
+  - name: communities
+  - name: channels
+  - name: voice
+  - name: internal
+paths:
+  /health/live:
+    get:
+      tags: [health]
+      operationId: healthLive
+      responses:
+        '200':
+          description: API process is alive.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StatusResponse'}
+  /health/ready:
+    get:
+      tags: [health]
+      operationId: healthReady
+      responses:
+        '200':
+          description: API and database are ready.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StatusResponse'}
+  /api/v1/auth/register:
+    post:
+      tags: [auth]
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RegisterRequest'}
+      responses:
+        '201':
+          description: User registered and authenticated.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuthResponse'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+      responses:
+        '200':
+          description: User authenticated.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuthResponse'}
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      security: [{cookieAuth: []}]
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      responses:
+        '204': {description: Session invalidated.}
+  /api/v1/auth/me:
+    get:
+      tags: [auth]
+      operationId: getCurrentUser
+      security: [{cookieAuth: []}]
+      responses:
+        '200':
+          description: Current user.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/User'}
+  /api/v1/auth/csrf:
+    get:
+      tags: [auth]
+      operationId: getCsrfToken
+      security: [{cookieAuth: []}]
+      responses:
+        '200':
+          description: CSRF token for state-changing requests.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [csrf_token]
+                properties:
+                  csrf_token: {type: string}
+  /api/v1/auth/yandex/start:
+    get:
+      tags: [auth]
+      operationId: startYandexOAuth
+      responses:
+        '302': {description: Redirect to Yandex authorization.}
+  /api/v1/auth/yandex/callback:
+    get:
+      tags: [auth]
+      operationId: completeYandexOAuth
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema: {type: string}
+        - name: state
+          in: query
+          required: true
+          schema: {type: string}
+      responses:
+        '303': {description: Redirect to frontend after authentication.}
+  /api/v1/me/communities:
+    get:
+      tags: [communities]
+      operationId: listMyCommunities
+      security: [{cookieAuth: []}]
+      responses:
+        '200':
+          description: Communities where the current user is a member.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/CommunitySummary'}
+  /api/v1/communities:
+    post:
+      tags: [communities]
+      operationId: createCommunity
+      security: [{cookieAuth: []}]
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommunityCreateRequest'}
+      responses:
+        '201':
+          description: Community created.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Community'}
+  /api/v1/communities/{community_id}:
+    get:
+      tags: [communities]
+      operationId: getCommunity
+      security: [{cookieAuth: []}]
+      parameters: [{ $ref: '#/components/parameters/CommunityId' }]
+      responses:
+        '200':
+          description: Community details.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Community'}
+  /api/v1/communities/{community_id}/leave:
+    post:
+      tags: [communities]
+      operationId: leaveCommunity
+      security: [{cookieAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/CommunityId'}
+        - {$ref: '#/components/parameters/CsrfHeader'}
+      responses:
+        '204': {description: Membership removed.}
+  /api/v1/communities/{community_id}/invites:
+    post:
+      tags: [communities]
+      operationId: createInvite
+      security: [{cookieAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/CommunityId'}
+        - {$ref: '#/components/parameters/CsrfHeader'}
+      responses:
+        '201':
+          description: Invite created.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Invite'}
+  /api/v1/invites/{token}:
+    get:
+      tags: [communities]
+      operationId: previewInvite
+      parameters: [{ $ref: '#/components/parameters/InviteToken' }]
+      responses:
+        '200':
+          description: Invite preview.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/InvitePreview'}
+  /api/v1/invites/{token}/accept:
+    post:
+      tags: [communities]
+      operationId: acceptInvite
+      security: [{cookieAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/InviteToken'}
+        - {$ref: '#/components/parameters/CsrfHeader'}
+      responses:
+        '200':
+          description: Joined community.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Community'}
+  /api/v1/communities/{community_id}/channels:
+    get:
+      tags: [channels]
+      operationId: listChannels
+      security: [{cookieAuth: []}]
+      parameters: [{ $ref: '#/components/parameters/CommunityId' }]
+      responses:
+        '200':
+          description: Voice channels.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Channel'}
+    post:
+      tags: [channels]
+      operationId: createChannel
+      security: [{cookieAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/CommunityId'}
+        - {$ref: '#/components/parameters/CsrfHeader'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ChannelCreateRequest'}
+      responses:
+        '201':
+          description: Voice channel created.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Channel'}
+  /api/v1/channels/{channel_id}/voice-session:
+    post:
+      tags: [voice]
+      operationId: createVoiceSession
+      security: [{cookieAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ChannelId'}
+        - {$ref: '#/components/parameters/CsrfHeader'}
+      responses:
+        '200':
+          description: Media connection credentials.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/VoiceSession'}
+  /api/v1/voice-sessions/{session_id}:
+    delete:
+      tags: [voice]
+      operationId: deleteVoiceSession
+      security: [{cookieAuth: []}]
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: {type: string}
+        - {$ref: '#/components/parameters/CsrfHeader'}
+      responses:
+        '204': {description: Voice session closed.}
+  /internal/v1/events:
+    post:
+      tags: [internal]
+      operationId: receiveMediaEvent
+      parameters:
+        - name: X-Internal-Token
+          in: header
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MediaEvent'}
+      responses:
+        '202':
+          description: Event accepted or identified as duplicate.
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: howl_session
+  parameters:
+    CommunityId:
+      name: community_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    ChannelId:
+      name: channel_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    InviteToken:
+      name: token
+      in: path
+      required: true
+      schema: {type: string}
+    CsrfHeader:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema: {type: string}
+  responses:
+    Conflict:
+      description: Conflict.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+  schemas:
+    StatusResponse:
+      type: object
+      required: [status]
+      properties:
+        status: {type: string, example: ok}
+    RegisterRequest:
+      type: object
+      required: [email, password, display_name]
+      properties:
+        email: {type: string, format: email}
+        password: {type: string, minLength: 8, maxLength: 128}
+        display_name: {type: string, minLength: 1, maxLength: 64}
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: {type: string, format: email}
+        password: {type: string}
+    User:
+      type: object
+      required: [id, email, display_name]
+      properties:
+        id: {type: string, format: uuid}
+        email: {type: string, format: email}
+        display_name: {type: string}
+    AuthResponse:
+      type: object
+      required: [user]
+      properties:
+        user: {$ref: '#/components/schemas/User'}
+    CommunityCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 100}
+    Community:
+      type: object
+      required: [id, name, owner_id, created_at, updated_at]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        owner_id: {type: string, format: uuid}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    CommunitySummary:
+      allOf:
+        - {$ref: '#/components/schemas/Community'}
+        - type: object
+          required: [member_count]
+          properties:
+            member_count: {type: integer, minimum: 0}
+    ChannelCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 100}
+    Channel:
+      type: object
+      required: [id, community_id, name, created_at, updated_at]
+      properties:
+        id: {type: string, format: uuid}
+        community_id: {type: string, format: uuid}
+        name: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    Invite:
+      type: object
+      required: [id, community_id, token, expires_at]
+      properties:
+        id: {type: string, format: uuid}
+        community_id: {type: string, format: uuid}
+        token: {type: string}
+        expires_at: {type: string, format: date-time}
+    InvitePreview:
+      type: object
+      required: [community_id, community_name, expires_at, is_expired]
+      properties:
+        community_id: {type: string, format: uuid}
+        community_name: {type: string}
+        expires_at: {type: string, format: date-time}
+        is_expired: {type: boolean}
+    MediaParticipant:
+      type: object
+      required: [user_id, display_name, is_muted]
+      properties:
+        user_id: {type: string, format: uuid}
+        display_name: {type: string}
+        is_muted: {type: boolean}
+    VoiceSession:
+      type: object
+      required: [session_id, signaling_url, media_token, expires_at, participants]
+      properties:
+        session_id: {type: string}
+        signaling_url: {type: string, format: uri}
+        media_token: {type: string}
+        expires_at: {type: string, format: date-time}
+        participants:
+          type: array
+          items: {$ref: '#/components/schemas/MediaParticipant'}
+    MediaEvent:
+      type: object
+      required: [event_id, type, occurred_at, community_id, channel_id]
+      properties:
+        event_id: {type: string}
+        type: {type: string}
+        occurred_at: {type: string, format: date-time}
+        community_id: {type: string, format: uuid}
+        channel_id: {type: string, format: uuid}
+        session_id: {type: string, nullable: true}
+        user_id: {type: string, format: uuid, nullable: true}
+        payload: {type: object}
+    ErrorResponse:
+      type: object
+      required: [error, request_id]
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code: {type: string}
+            message: {type: string}
+            details: {type: object}
+        request_id: {type: string}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://howl.local/contracts/realtime-event.json",
+  "type": "object",
+  "required": ["type", "version", "event_id", "occurred_at"],
+  "properties": {
+    "type": {"type": "string"},
+    "version": {"type": "integer", "const": 1},
+    "event_id": {"type": "string"},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "community_id": {"type": ["string", "null"], "format": "uuid"},
+    "channel_id": {"type": ["string", "null"], "format": "uuid"},
+    "payload": {"type": "object"}
+  },
+  "additionalProperties": false
+}

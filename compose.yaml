@@ -1,0 +1,38 @@
+name: howl
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: howl
+      POSTGRES_USER: howl
+      POSTGRES_PASSWORD: howl
+    ports:
+      - "5432:5432"
+    volumes:
+      - howl_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U howl -d howl"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./services/api
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://howl:howl@postgres:5432/howl
+      SESSION_SECRET: change-me
+      MEDIA_SERVICE_URL: http://media:8081
+      MEDIA_INTERNAL_TOKEN: change-me-media-token
+      CORS_ORIGINS: '["http://localhost:5173", "http://localhost:3000"]'
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  howl_postgres_data:
